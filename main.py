@@ -2,7 +2,8 @@ import tkinter as tk
 from tkinter import ttk, DISABLED, NORMAL
 import ctypes
 from tkinter.ttk import Style
-
+import string
+import random
 
 class App(ttk.Frame):
     def __init__(self, parent):
@@ -14,17 +15,20 @@ class App(ttk.Frame):
         self.theme_mode = 'light'  # default theme mode
 
         # Create value lists
-        self.generated_password = "rtmhkbst32@#%jeh"
+        self.generated_password = ""
 
         # Declare parameters
-        self.var_0 = tk.BooleanVar()
-        self.var_1 = tk.BooleanVar(value=True)
-        self.var_2 = tk.BooleanVar()
-        self.var_3 = tk.IntVar(value=2)
         self.password_length_min = 1
         self.password_length_max = 100
         self.password_length = tk.IntVar(value=12)  # default password length
-        self.char_pool = tk.IntVar(value=0)
+        self.is_all_chars = tk.IntVar(value=0)
+        self.char_pool = {
+            'lower': string.ascii_lowercase,
+            'upper': string.ascii_uppercase,
+            'number': ''.join(map(str, range(10))),
+            'symbol': '!@#$%^&*',
+            'ambiguous': ['l', 'I', 'O', '0', '1']
+        }
         self.char_type = {
             'value': {
                 'upper': tk.IntVar(value=1),
@@ -41,6 +45,8 @@ class App(ttk.Frame):
 
         # Create widgets :)
         self.setup_widgets()
+
+        self.generate_password()
 
     def setup_widgets(self):
         r = Style()
@@ -64,12 +70,12 @@ class App(ttk.Frame):
         self.change_theme_switch = ttk.Checkbutton(self.frame_top_bar, text="Dark Mode", style="Switch.TCheckbutton", command=self.change_theme)
         self.change_theme_switch.pack(side='right', padx=10)
 
-        self.result_frame = ttk.LabelFrame(self.frame_center, text="Result", padding=(20, 10))
+        self.result_frame = ttk.LabelFrame(self.frame_center, text="Result")
         self.result_frame.pack(fill='x')
 
-        self.result_label = ttk.Label(self.result_frame, text=self.generated_password,
-                                      font=("-size", 15, "-weight", "bold"))
-        self.result_label.pack(side='left', padx=10)
+        self.result_label = ttk.Label(self.result_frame, text=self.generated_password, width=60,
+                                      font=("-size", 15, "-weight", "bold", '-family', 'Microsoft Sans Serif'))
+        self.result_label.pack(side='left', padx=10, fill='x')
 
         self.config_frame = ttk.Frame(self, style='LBlue.TFrame')
         self.config_frame.grid(row=3, rowspan=12, column=1, columnspan=4, sticky='nsew')
@@ -91,7 +97,7 @@ class App(ttk.Frame):
         self.password_length_label.grid(row=0, columnspan=2, sticky='w')
 
         vcmd = (self.register(self.callback))
-        self.password_length_entry = ttk.Entry(self.config_left_pane, width=5,
+        self.password_length_entry = ttk.Entry(self.config_left_pane, width=5, textvariable=self.password_length,
                                                validate='all', validatecommand=(vcmd, '%P'))
         self.password_length_entry.insert(-1, self.password_length.get())
 
@@ -102,17 +108,17 @@ class App(ttk.Frame):
             from_=self.password_length_min,
             to=self.password_length_max,
             variable=self.password_length,
-            command=lambda event: self.password_length.set(self.password_length_scale.get()),
+            command=lambda event: self.password_length.set(round(self.password_length_scale.get())),
         )
         self.password_length_scale.grid(row=1, column=1, sticky='ew')
 
         self.config_center_pane = ttk.Frame(self.config_frame, style='Blue.TFrame')
         self.config_center_pane.grid(row=2, column=1, sticky='nsew')
 
-        self.easy2read_radio_btn = ttk.Radiobutton(self.config_center_pane, text='Easy to Read', variable=self.char_pool, value=0)
+        self.easy2read_radio_btn = ttk.Radiobutton(self.config_center_pane, text='Easy to Read (*Exclude Ambiguous Characters)', variable=self.is_all_chars, value=0)
         self.easy2read_radio_btn.grid(sticky='w')
 
-        self.all_chars_radio_btn = ttk.Radiobutton(self.config_center_pane, text='All Characters', variable=self.char_pool, value=1)
+        self.all_chars_radio_btn = ttk.Radiobutton(self.config_center_pane, text='All Characters', variable=self.is_all_chars, value=1)
         self.all_chars_radio_btn.grid(sticky='w')
 
         self.config_right_pane = ttk.Frame(self.config_frame, style='Red.TFrame')
@@ -140,6 +146,9 @@ class App(ttk.Frame):
         for x in self.char_type['btn'].values():
             x.grid(sticky='w')
 
+        self.generate_password_btn = ttk.Button(text='Generate', command=self.generate_password)
+        self.generate_password_btn.pack(side='bottom')
+
     def change_theme(self):
         self.theme_mode = 'light' if self.tk.call("ttk::style", "theme", "use") == "azure-dark" \
             else 'dark'
@@ -156,12 +165,28 @@ class App(ttk.Frame):
                 return False
 
     def check_if_last_checkbox(self):
+        self.generate_password()
         if sum([x.get() for x in self.char_type['value'].values()]) == 1:
             target_char_type = next((k for k, v in self.char_type['value'].items() if v.get() == 1), '')
             self.char_type['btn'][target_char_type].config(state=DISABLED)
         else:
             for x in self.char_type['btn'].values():
                 x.config(state=NORMAL)
+
+    def generate_password(self):
+        letters = ''
+        if self.char_type['value']['lower'].get():
+            letters += self.char_pool['lower']
+        if self.char_type['value']['upper'].get():
+            letters += self.char_pool['upper']
+        if self.char_type['value']['number'].get():
+            letters += self.char_pool['number']
+        if self.char_type['value']['symbol'].get():
+            letters += self.char_pool['symbol']
+        if not self.is_all_chars.get():
+            letters = [x for x in letters if x not in self.char_pool['ambiguous']]
+        result_str = ''.join(random.choice(letters) for _ in range(self.password_length.get()))
+        self.result_label.config(text=result_str)
 
 
 if __name__ == "__main__":
