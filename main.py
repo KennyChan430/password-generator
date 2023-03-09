@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, DISABLED, NORMAL
 import ctypes
 from tkinter.ttk import Style
 
@@ -25,6 +25,14 @@ class App(ttk.Frame):
         self.password_length_max = 100
         self.password_length = tk.IntVar(value=12)  # default password length
         self.char_pool = tk.IntVar(value=0)
+        self.char_type = {
+            'value': {
+                'upper': tk.IntVar(value=1),
+                'lower': tk.IntVar(value=1),
+                'number': tk.IntVar(value=1),
+                'symbol': tk.IntVar(value=1)
+            }
+        }
 
         # Widgets
         self.change_theme_switch = None
@@ -110,17 +118,27 @@ class App(ttk.Frame):
         self.config_right_pane = ttk.Frame(self.config_frame, style='Red.TFrame')
         self.config_right_pane.grid(row=2, column=2, sticky='nsew')
 
-        self.upper_check_btn = ttk.Checkbutton(self.config_right_pane, text='Uppercase')
-        self.upper_check_btn.grid(sticky='w')
-
-        self.lower_check_btn = ttk.Checkbutton(self.config_right_pane, text='Lowercase')
-        self.lower_check_btn.grid(sticky='w')
-
-        self.number_check_btn = ttk.Checkbutton(self.config_right_pane, text='Numbers')
-        self.number_check_btn.grid(sticky='w')
-
-        self.symbol_check_btn = ttk.Checkbutton(self.config_right_pane, text='Symbols')
-        self.symbol_check_btn.grid(sticky='w')
+        self.char_type['btn'] = {
+            'upper': ttk.Checkbutton(self.config_right_pane, text='Uppercase',
+                                     onvalue=1, offvalue=0,
+                                     variable=self.char_type['value']['upper'],
+                                     command=lambda: self.check_if_last_checkbox()),
+            'lower': ttk.Checkbutton(self.config_right_pane, text='Lowercase',
+                                     onvalue=1, offvalue=0,
+                                     variable=self.char_type['value']['lower'],
+                                     command=lambda: self.check_if_last_checkbox()),
+            'number': ttk.Checkbutton(self.config_right_pane, text='Numbers',
+                                      onvalue=1, offvalue=0,
+                                      variable=self.char_type['value']['number'],
+                                      command=lambda: self.check_if_last_checkbox()),
+            'symbol': ttk.Checkbutton(self.config_right_pane, text='Symbols',
+                                      onvalue=1, offvalue=0,
+                                      variable=self.char_type['value']['symbol'],
+                                      command=lambda: self.check_if_last_checkbox())
+        }
+        # grid all char_type button
+        for x in self.char_type['btn'].values():
+            x.grid(sticky='w')
 
     def change_theme(self):
         self.theme_mode = 'light' if self.tk.call("ttk::style", "theme", "use") == "azure-dark" \
@@ -136,6 +154,14 @@ class App(ttk.Frame):
                 return True
             else:
                 return False
+
+    def check_if_last_checkbox(self):
+        if sum([x.get() for x in self.char_type['value'].values()]) == 1:
+            target_char_type = next((k for k, v in self.char_type['value'].items() if v.get() == 1), '')
+            self.char_type['btn'][target_char_type].config(state=DISABLED)
+        else:
+            for x in self.char_type['btn'].values():
+                x.config(state=NORMAL)
 
 
 if __name__ == "__main__":
